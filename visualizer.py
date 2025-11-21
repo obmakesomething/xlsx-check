@@ -44,12 +44,13 @@ if __name__ == '__main__':
     # --- This block is for standalone testing of the visualizer ---
     SYMBOL = 'BTC/USDT:USDT'
     LEVERAGE = 20
+    DATA_LIMIT = 10080 # 7 days of 1m data
 
     # Create a default strategy to run the backtest
     strategy = AIStrategy()
 
     # 1. Fetch Data
-    ohlcv_data = fetch_detailed_klines(symbol=SYMBOL, limit=2000)
+    ohlcv_data = fetch_detailed_klines(symbol=SYMBOL, limit=DATA_LIMIT)
 
     # 2. Calculate Features
     features_df = calculate_fast_features(

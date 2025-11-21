@@ -45,13 +45,15 @@ if __name__ == '__main__':
     from data_fetcher import fetch_detailed_klines
     from feature_engineering import calculate_fast_features, add_regime_features
 
-    SYMBOL = 'BTC/USDT:USDT'
+    # Using the specific symbol for OKX perpetual swap
+    SYMBOL = 'DOGE-USDT-SWAP'
+    EXCHANGE = 'okx'
 
     # --- Create a default strategy instance ---
     default_strategy = AIStrategy()
 
     # --- Fetch data and calculate features based on strategy params ---
-    ohlcv_data = fetch_detailed_klines(symbol=SYMBOL, limit=2000)
+    ohlcv_data = fetch_detailed_klines(symbol=SYMBOL, limit=2000, exchange_name=EXCHANGE)
     features_df = calculate_fast_features(
         ohlcv_data.copy(),
         ema_short_len=default_strategy.ema_short_len,

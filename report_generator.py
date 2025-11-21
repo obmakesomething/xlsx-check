@@ -1,56 +1,71 @@
-from data_fetcher import fetch_detailed_klines
+from historical_data_downloader import download_historical_data
 from feature_engineering import calculate_fast_features, add_regime_features
 from ai_decision_module import AIStrategy
 from backtester import run_ai_futures_backtest
 from visualizer import plot_results
 import pandas as pd
+import logging
 
-def generate_report(symbol, leverage, best_params, data_limit=2000):
+def generate_report(symbol, leverage, best_params, days_to_backtest, exchange_name='okx'):
     """
-    Generates a final report with the performance of the best parameters.
+    Generates a final report using pre-downloaded historical data.
     """
-    print("--- Generating Final Report ---")
-    print(f"Symbol: {symbol}, Leverage: {leverage}")
-    print("Applying optimized parameters...")
-    print(best_params)
+    logging.info("--- Generating Final Report ---")
 
-    # 1. Create strategy with the best parameters
-    strategy = AIStrategy(**best_params)
+    # 1. Ensure data is available and load it
+    data_file = download_historical_data(symbol, days_to_fetch=days_to_backtest, exchange_name=exchange_name)
+    ohlcv_data = pd.read_csv(data_file, parse_dates=['k_open_time'], index_col='k_open_time')
 
-    # 2. Fetch data and calculate features
-    ohlcv_data = fetch_detailed_klines(symbol=symbol, limit=data_limit)
+    # 2. Create strategy with the best parameters
+    strategy_params = {k: v for k, v in best_params.items() if k not in ['trailing_stop_percent']}
+    ts_param = best_params.get('trailing_stop_percent')
+    strategy = AIStrategy(**strategy_params)
+
+    # 3. Calculate features
+    logging.info("Calculating features for the final report...")
     features_df = calculate_fast_features(
         ohlcv_data.copy(),
         ema_short_len=strategy.ema_short_len,
         ema_long_len=strategy.ema_long_len
     )
-    final_df = add_regime_features(features_df, symbol=symbol)
 
-    # 3. Run final backtest
-    final_backtest = run_ai_futures_backtest(final_df.copy(), strategy, leverage=leverage)
+    base_currency = symbol.split('-')[0]
+    quote_currency = symbol.split('-')[1]
+    regime_symbol = f"{base_currency}/{quote_currency}:{quote_currency}"
+    final_df = add_regime_features(features_df, symbol=regime_symbol, exchange_name=exchange_name)
 
-    # 4. Print final performance summary
-    print("\n--- Optimized Performance Summary ---")
-    print(f"Total Return: {final_backtest['total_return']:.2f}%")
+    # 4. Run final backtest
+    logging.info("Running final backtest with optimized parameters...")
+    final_backtest = run_ai_futures_backtest(final_df.copy(), strategy, leverage=leverage, trailing_stop_percent=ts_param)
+
+    # 5. Print final performance summary
+    print("\n--- Final Optimized Performance Summary ---")
+    print(f"Period: {days_to_backtest} days")
+    print(f"Leverage: {leverage}x")
+    print("Best Parameters:", best_params)
+    print(f"\nTotal Return: {final_backtest['total_return']:.2f}%")
     print(f"Final Capital: ${final_backtest['final_capital']:,.2f}")
     print(f"Number of Trades: {final_backtest['num_trades']}")
-    print(f"Win Rate: {final_backtest['win_rate']:.2%}")
+    print(f"Win Rate: {final_backtest.get('win_rate', 0):.2%}")
 
-    # 5. Generate and save the final performance chart
+    # 6. Generate and save the final performance chart
     if not final_backtest['results_df'].empty:
         plot_results(final_backtest['results_df'])
 
 if __name__ == '__main__':
-    # These are the best parameters we found in the optimization step
-    best_doge_params = {
-        'ema_short_len': 5,
-        'ema_long_len': 20,
-        'vol_threshold': 1.2,
-        'gap_threshold': 0.0005
+    # Best parameters found from the 365-day optimization including trailing stop
+    final_best_params = {
+        'ema_short_len': 13,
+        'ema_long_len': 100,
+        'vol_threshold': 2.0,
+        'gap_threshold': 0.002,
+        'trailing_stop_percent': 0.05
     }
 
     generate_report(
-        symbol='DOGE/USDT:USDT',
+        symbol='DOGE-USDT-SWAP',
         leverage=20,
-        best_params=best_doge_params
+        best_params=final_best_params,
+        days_to_backtest=365,
+        exchange_name='okx'
     )

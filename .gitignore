@@ -24,3 +24,9 @@ wheels/
 
 # Exclude generated images
 *.png
+
+# Exclude log files
+*.log
+
+# Exclude data files
+data/

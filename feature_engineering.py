@@ -1,13 +1,13 @@
 import pandas as pd
 import pandas_ta as ta
 import ccxt
-from data_fetcher import fetch_detailed_klines
+import logging
+from historical_data_downloader import download_historical_data
 
 def calculate_fast_features(df, ema_short_len=5, ema_long_len=20, atr_len=14, vol_ma_len=20):
     """Calculates the 'Fast Loop' features with customizable parameters."""
     df = df.sort_index()
 
-    # Dynamic column names
     ema_short_name = f'ema_{ema_short_len}'
     ema_long_name = f'ema_{ema_long_len}'
     atr_name = f'mini_ATR_{atr_len}'
@@ -22,26 +22,33 @@ def calculate_fast_features(df, ema_short_len=5, ema_long_len=20, atr_len=14, vo
 
     return df
 
-def add_regime_features(df_1m, symbol, timeframe='4h', adx_len=14):
-    """Calculates and merges 'Regime Loop' features."""
-    print(f"Fetching {timeframe} data for regime analysis...")
-    exchange = ccxt.kucoinfutures()
+def add_regime_features(df_1m, symbol, timeframe='4h', adx_len=14, exchange_name='okx'):
+    """Calculates and merges 'Regime Loop' features into the 1-minute dataframe."""
+    logging.info(f"Getting {timeframe} data for regime analysis...")
 
-    candles_needed = adx_len * 3 # Ensure enough data for ADX calculation
-    timeframe_duration_ms = exchange.parse_timeframe(timeframe) * 1000
-    since = exchange.milliseconds() - candles_needed * timeframe_duration_ms
+    candles_needed = adx_len * 3
+    ms_per_candle = ccxt.okx().parse_timeframe(timeframe) * 1000
+    days_to_fetch = (candles_needed * ms_per_candle) / (1000 * 60 * 60 * 24)
+    days_to_fetch = int(days_to_fetch) + 2
 
-    df_4h = fetch_detailed_klines(symbol=symbol, timeframe=timeframe, since=since, limit=candles_needed)
+    regime_data_file = download_historical_data(
+        symbol=symbol,
+        days_to_fetch=days_to_fetch,
+        timeframe=timeframe,
+        exchange_name=exchange_name
+    )
+
+    df_4h = pd.read_csv(regime_data_file, parse_dates=['k_open_time'], index_col='k_open_time')
 
     if df_4h.empty:
-        print("Could not fetch 4h data for regime, defaulting to 'Range'.")
+        logging.warning("Could not load 4h data for regime, defaulting to 'Range'.")
         df_1m['trend_regime'] = 'Range'
         return df_1m
 
     adx = df_4h.ta.adx(high=df_4h['k_high'], low=df_4h['k_low'], close=df_4h['k_close'], length=adx_len)
 
     if adx is None or adx.empty:
-        print("Could not calculate ADX, defaulting to 'Range'.")
+        logging.warning("Could not calculate ADX, defaulting to 'Range'.")
         df_1m['trend_regime'] = 'Range'
         return df_1m
 
@@ -64,12 +71,3 @@ def add_regime_features(df_1m, symbol, timeframe='4h', adx_len=14):
 
     df_merged.dropna(inplace=True)
     return df_merged
-
-if __name__ == '__main__':
-    SYMBOL = 'BTC/USDT:USDT'
-    ohlcv_data = fetch_detailed_klines(symbol=SYMBOL, limit=1000)
-    features_df = calculate_fast_features(ohlcv_data.copy())
-    final_df = add_regime_features(features_df, symbol=SYMBOL)
-
-    print("--- Final DataFrame with Regime (Sample) ---")
-    print(final_df[['k_close', 'ema_20', 'vol_rel', 'trend_regime']].tail())
