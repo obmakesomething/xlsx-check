@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database.models import ChatMessage, DesignHistory
-from agents.orchestrator import Orchestrator
+from agents.orchestrator import OrchestratorAgent as Orchestrator
 from rag.retriever import Retriever
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class CopilotService:
             role="user",
             content=message,
             agent_type="user",
-            metadata=context or {},
+            meta_info=context or {},
         )
         self.db.add(user_msg)
         await self.db.flush()
@@ -65,7 +65,7 @@ class CopilotService:
         history = await self._get_history(project_id, limit=10)
 
         # Route through orchestrator
-        result = await self.orchestrator.route(
+        result = await self.orchestrator.execute(
             user_message=message,
             context=rag_context,
             history=history,
@@ -77,7 +77,7 @@ class CopilotService:
             role="assistant",
             content=result.get("content", ""),
             agent_type=result.get("agent_type", "orchestrator"),
-            metadata={
+            meta_info={
                 "task_type": result.get("task_type", "unknown"),
                 "usage": result.get("usage", {}),
             },
@@ -103,7 +103,8 @@ class CopilotService:
         """Execute structured analysis and return the full JSON schema response."""
 
         # Step 1: Determine task type
-        task_type = self.orchestrator.detect_task_type(user_request)
+        routing = self.orchestrator._rule_based_routing(user_request)
+        task_type = routing.get("task_type", "unknown")
 
         # Step 2: Get RAG context
         rag_context = self.retriever.get_context_for_query(user_request)
@@ -119,7 +120,7 @@ class CopilotService:
         )
 
         # Step 4: Route to appropriate agent(s) with structured output
-        agent_result = await self.orchestrator.route(
+        agent_result = await self.orchestrator.execute(
             user_message=user_request,
             context=full_context,
             task_type=task_type,
@@ -162,7 +163,7 @@ class CopilotService:
                 "role": msg.role,
                 "content": msg.content,
                 "agent_type": msg.agent_type,
-                "metadata": msg.metadata,
+                "metadata": msg.meta_info,
                 "created_at": msg.created_at.isoformat() if msg.created_at else None,
             }
             for msg in messages

@@ -1,6 +1,6 @@
 import client from './client';
-import { Project, ProductSpec, BomItem, CostBreakdown, CertificationItem, TimelineEvent, CircuitBlock } from '../types/project';
-import { PaginatedResponse } from '../types/common';
+import type { Project, ProductSpec, BomItem, CostBreakdown, CertificationItem, TimelineEvent, CircuitBlock } from '../types/project';
+import type { PaginatedResponse } from '../types/common';
 
 export const projectsApi = {
   list: async (page = 1, pageSize = 20): Promise<PaginatedResponse<Project>> => {

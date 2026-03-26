@@ -1,96 +1,111 @@
-"""LED AI Copilot - FastAPI Application Entry Point."""
+"""FastAPI application entry point for the LED Product Development AI Copilot."""
 
-from __future__ import annotations
-
-import os
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from config import settings
-from database.connection import engine, Base
-from routers import projects, components, copilot, parsers as parser_router, knowledge, export
+from database.connection import init_db
+from rag.vector_store import VectorStore
 
+from routers.projects import router as projects_router
+from routers.components import router as components_router
+from routers.copilot import router as copilot_router
+from routers.parsers import router as parsers_router
+from routers.knowledge import router as knowledge_router
+from routers.export import router as export_router
+
+# Configure logging
 logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan: startup and shutdown."""
-    logger.info("=== LED AI Copilot 시작 ===")
+    """Startup and shutdown events."""
+    # ── Startup ──
+    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # Create DB tables
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created")
-
-    # Create upload/export directories
+    # Ensure upload directory exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    os.makedirs(settings.EXPORT_DIR, exist_ok=True)
+
+    # Initialize database
+    await init_db()
+    logger.info("Database initialized")
 
     # Initialize vector store
     try:
-        from rag.vector_store import VectorStore
-        vs = VectorStore()
-        vs.initialize()
+        store = VectorStore.get_instance()
+        store.initialize()
         logger.info("Vector store initialized")
     except Exception as e:
-        logger.warning(f"Vector store init failed (non-fatal): {e}")
-
-    # Seed design principles if DB is empty
-    try:
-        from services.knowledge_service import seed_initial_knowledge
-        seed_initial_knowledge()
-        logger.info("Knowledge base seeded")
-    except Exception as e:
-        logger.warning(f"Knowledge seed failed (non-fatal): {e}")
+        logger.warning(f"Vector store initialization failed (non-fatal): {e}")
 
     yield
 
-    logger.info("=== LED AI Copilot 종료 ===")
+    # ── Shutdown ──
+    logger.info("Shutting down")
 
 
 app = FastAPI(
-    title="LED AI Copilot",
-    description="LED 제품 개발 AI 코파일럿 - 회로 설계, RF, 인증, 양산 지원",
-    version="1.0.0",
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="AI Copilot backend for LED lighting product development",
     lifespan=lifespan,
 )
 
-# CORS
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers
-app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
-app.include_router(components.router, prefix="/api/components", tags=["components"])
-app.include_router(copilot.router, prefix="/api/copilot", tags=["copilot"])
-app.include_router(parser_router.router, prefix="/api/parse", tags=["parsers"])
-app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
-app.include_router(export.router, prefix="/api/export", tags=["export"])
+# Include routers
+app.include_router(projects_router)
+app.include_router(components_router)
+app.include_router(copilot_router)
+app.include_router(parsers_router)
+app.include_router(knowledge_router)
+app.include_router(export_router)
 
 
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
+@app.get("/", tags=["root"])
+async def root():
+    """Root endpoint."""
     return {
-        "status": "healthy",
-        "service": "LED AI Copilot",
-        "version": "1.0.0",
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "running",
     }
 
 
-@app.get("/")
-async def root():
-    return {"message": "LED AI Copilot API", "docs": "/docs"}
+@app.get("/health", tags=["health"])
+async def health_check():
+    """Health check endpoint."""
+    store = VectorStore.get_instance()
+    collections = store.list_collections() if store.client else []
+
+    return {
+        "status": "healthy",
+        "version": settings.APP_VERSION,
+        "database": "connected",
+        "vector_store": {
+            "connected": store.client is not None,
+            "collections": collections,
+        },
+        "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)

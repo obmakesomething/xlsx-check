@@ -134,10 +134,10 @@ class ChatMessageOut(BaseModel):
     role: str
     content: str
     agent_type: str
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = Field(default={}, validation_alias="meta_info")
     created_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 # ── Copilot Analyze ──────────────────────────────────────────────────────────

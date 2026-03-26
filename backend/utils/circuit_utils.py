@@ -1,165 +1,181 @@
-"""Circuit analysis utility functions."""
+"""Circuit analysis helper utilities for LED product design."""
 
 from __future__ import annotations
+import math
 from typing import Any
 
 
-def identify_topology(components: list[dict]) -> str:
-    """주요 부품 구성으로 LED 드라이버 토폴로지를 추정한다."""
-    ic_values = [c.get("value", "").lower() for c in components]
-    ic_parts = [c.get("part_number", "").lower() for c in components]
-    all_text = " ".join(ic_values + ic_parts)
+class CircuitUtils:
+    """Static utility methods for LED circuit calculations."""
 
-    # Buck topology indicators
-    buck_ics = ["ncl30170", "bp2866", "xl4015", "mp2307", "tps5430", "lm2596"]
-    if any(ic in all_text for ic in buck_ics):
-        return "buck"
+    @staticmethod
+    def led_resistor(v_supply: float, v_led: float, i_led_ma: float, n_series: int = 1) -> dict[str, Any]:
+        """Calculate current-limiting resistor for LED string.
 
-    # Boost topology indicators
-    boost_ics = ["mt3608", "xl6009", "tps61088"]
-    if any(ic in all_text for ic in boost_ics):
-        return "boost"
+        Args:
+            v_supply: Supply voltage (V)
+            v_led: Forward voltage per LED (V)
+            i_led_ma: Desired LED current (mA)
+            n_series: Number of LEDs in series
 
-    # Buck-boost
-    bb_ics = ["lt3791", "tps63020"]
-    if any(ic in all_text for ic in bb_ics):
-        return "buck-boost"
+        Returns:
+            Dict with resistance, power dissipation, and E24 nearest value.
+        """
+        v_drop = v_supply - (v_led * n_series)
+        if v_drop <= 0:
+            return {"error": "Supply voltage too low for LED string", "v_drop": v_drop}
 
-    # Flyback (isolated)
-    flyback_ics = ["uc3842", "viper22a", "ob2263", "cr6853"]
-    if any(ic in all_text for ic in flyback_ics):
-        return "flyback"
+        i_led_a = i_led_ma / 1000.0
+        r_exact = v_drop / i_led_a
+        p_resistor = v_drop * i_led_a
+        r_nearest = CircuitUtils.nearest_e24(r_exact)
 
-    # Linear driver
-    linear_ics = ["sm2082", "bp9916", "pt4115"]
-    if any(ic in all_text for ic in linear_ics):
-        return "linear"
+        return {
+            "r_exact_ohm": round(r_exact, 2),
+            "r_nearest_e24_ohm": r_nearest,
+            "power_dissipation_w": round(p_resistor, 4),
+            "recommended_power_rating_w": CircuitUtils._next_power_rating(p_resistor),
+            "actual_current_ma": round((v_drop / r_nearest) * 1000, 2) if r_nearest > 0 else 0,
+            "v_drop_resistor": round(v_drop, 2),
+        }
 
-    # Check for transformer (indicates isolated topology)
-    has_transformer = any(
-        c.get("category", "").lower() in ["transformer", "트랜스포머"]
-        or "transformer" in c.get("description", "").lower()
-        for c in components
-    )
-    if has_transformer:
-        return "flyback"
+    @staticmethod
+    def buck_converter(v_in: float, v_out: float, i_out_a: float,
+                       f_sw_khz: float = 500, ripple_pct: float = 30) -> dict[str, Any]:
+        """Calculate Buck converter inductor and capacitor values.
 
-    return "unknown"
+        Args:
+            v_in: Input voltage (V)
+            v_out: Output voltage (V)
+            i_out_a: Output current (A)
+            f_sw_khz: Switching frequency (kHz)
+            ripple_pct: Inductor current ripple percentage
+        """
+        if v_in <= v_out:
+            return {"error": "V_in must be greater than V_out for buck converter"}
 
+        duty = v_out / v_in
+        f_sw = f_sw_khz * 1000
+        delta_il = i_out_a * (ripple_pct / 100.0)
 
-def estimate_power(components: list[dict]) -> dict[str, Any]:
-    """부품 구성으로 대략적인 출력 전력을 추정한다."""
-    result = {
-        "estimated_power_w": None,
-        "input_voltage": None,
-        "output_voltage": None,
-        "confidence": "low",
-        "basis": [],
-    }
+        # Inductor: L = (V_out * (1 - D)) / (f_sw * delta_IL)
+        l_henry = (v_out * (1 - duty)) / (f_sw * delta_il) if delta_il > 0 else 0
+        l_uh = l_henry * 1e6
 
-    for c in components:
-        desc = (c.get("description", "") + " " + c.get("value", "")).lower()
+        # Output capacitor: C = delta_IL / (8 * f_sw * delta_V_out)
+        # Assuming 1% output voltage ripple
+        delta_v_out = v_out * 0.01
+        c_farad = delta_il / (8 * f_sw * delta_v_out) if delta_v_out > 0 else 0
+        c_uf = c_farad * 1e6
 
-        # LED current from sense resistor
-        if c.get("category") == "resistor" and "sense" in desc:
-            try:
-                value = float(c.get("value", "0").replace("R", ".").replace("Ω", ""))
-                if 0.1 <= value <= 10:
-                    current_a = 0.5 / value  # Typical Vsense ≈ 0.5V
-                    result["basis"].append(f"Sense resistor {value}Ω → ~{current_a:.2f}A")
-            except (ValueError, ZeroDivisionError):
-                pass
+        return {
+            "duty_cycle": round(duty, 4),
+            "inductor_uh": round(l_uh, 1),
+            "output_capacitor_uf": round(c_uf, 1),
+            "ripple_current_a": round(delta_il, 3),
+            "peak_current_a": round(i_out_a + delta_il / 2, 3),
+            "power_out_w": round(v_out * i_out_a, 2),
+            "efficiency_estimate": "85-92%",
+        }
 
-    return result
+    @staticmethod
+    def thermal_resistance(
+        p_total_w: float,
+        t_ambient_c: float = 25,
+        tj_max_c: float = 125,
+        rth_jc: float = 5.0,
+        rth_cs: float = 0.5,
+    ) -> dict[str, Any]:
+        """Calculate required heatsink thermal resistance.
 
+        Args:
+            p_total_w: Total power dissipation (W)
+            t_ambient_c: Ambient temperature (C)
+            tj_max_c: Maximum junction temperature (C)
+            rth_jc: Junction-to-case thermal resistance (C/W)
+            rth_cs: Case-to-sink thermal resistance (C/W)
+        """
+        rth_total = (tj_max_c - t_ambient_c) / p_total_w if p_total_w > 0 else float("inf")
+        rth_sa_required = rth_total - rth_jc - rth_cs
 
-def identify_protection_circuits(components: list[dict]) -> list[dict]:
-    """보호회로 구성 요소를 식별한다."""
-    protections = []
+        return {
+            "rth_total_cw": round(rth_total, 2),
+            "rth_sa_required_cw": round(rth_sa_required, 2),
+            "heatsink_needed": rth_sa_required < 50,
+            "tj_estimated_c": round(t_ambient_c + p_total_w * (rth_jc + rth_cs + max(rth_sa_required, 0)), 1),
+            "margin_c": round(tj_max_c - (t_ambient_c + p_total_w * rth_total), 1),
+        }
 
-    for c in components:
-        category = c.get("category", "").lower()
-        value = c.get("value", "").lower()
-        desc = c.get("description", "").lower()
-        combined = f"{category} {value} {desc}"
+    @staticmethod
+    def nearest_e24(value: float) -> float:
+        """Find nearest E24 standard resistor value."""
+        if value <= 0:
+            return 0
 
-        if any(kw in combined for kw in ["mov", "varistor", "배리스터"]):
-            protections.append({
-                "type": "MOV",
-                "component": c.get("ref_designator", "?"),
-                "purpose": "서지 보호 (과전압 클램핑)",
-            })
-        elif any(kw in combined for kw in ["ptc", "fuse", "퓨즈"]):
-            protections.append({
-                "type": "PTC_fuse",
-                "component": c.get("ref_designator", "?"),
-                "purpose": "과전류 보호 (자기복구 퓨즈)",
-            })
-        elif any(kw in combined for kw in ["tvs", "esd", "정전기"]):
-            protections.append({
-                "type": "TVS",
-                "component": c.get("ref_designator", "?"),
-                "purpose": "ESD/TVS 보호",
-            })
-        elif any(kw in combined for kw in ["ntc", "써미스터"]):
-            protections.append({
-                "type": "NTC",
-                "component": c.get("ref_designator", "?"),
-                "purpose": "돌입전류 제한",
-            })
-        elif "zener" in combined:
-            protections.append({
-                "type": "Zener",
-                "component": c.get("ref_designator", "?"),
-                "purpose": "과전압 보호 (OVP)",
-            })
+        e24 = [
+            1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0,
+            3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1,
+        ]
 
-    return protections
+        decade = 10 ** math.floor(math.log10(value))
+        normalized = value / decade
 
+        nearest = min(e24, key=lambda x: abs(x - normalized))
+        return round(nearest * decade, 2)
 
-def classify_component(part_number: str, value: str, description: str) -> str:
-    """부품을 기능 분류한다."""
-    text = f"{part_number} {value} {description}".lower()
+    @staticmethod
+    def _next_power_rating(power_w: float) -> float:
+        """Select the next standard power rating above the dissipation."""
+        ratings = [0.0625, 0.1, 0.125, 0.25, 0.5, 1.0, 2.0, 5.0]
+        for r in ratings:
+            if r >= power_w * 2:  # 2x derating
+                return r
+        return power_w * 3
 
-    categories = [
-        ("led-driver-ic", ["ncl30170", "bp2866", "sm2082", "bp9916", "pt4115", "ob2263"]),
-        ("rf-ic", ["nrf24l01", "cc2500", "esp32", "cc2530", "si4432", "esp8266"]),
-        ("sensor-ic", ["biss0001", "hlk-ld", "rcwl", "as312", "am312"]),
-        ("mcu", ["stm32", "attiny", "atmega", "pic", "esp32", "nrf52"]),
-        ("mosfet", ["mosfet", "irf", "ao3400", "si2302"]),
-        ("diode", ["diode", "1n4148", "ss34", "es1j", "bridge"]),
-        ("capacitor", ["cap", "uf", "nf", "pf", "capacitor", "콘덴서"]),
-        ("resistor", ["res", "ohm", "resistor", "저항"]),
-        ("inductor", ["inductor", "uh", "mh", "인덕터", "코일"]),
-        ("transformer", ["transformer", "트랜스"]),
-        ("connector", ["connector", "header", "pin", "커넥터", "단자"]),
-        ("led", ["led", "발광"]),
-    ]
+    @staticmethod
+    def led_string_config(
+        v_supply: float,
+        v_led: float,
+        n_total: int,
+        i_per_string_ma: float,
+    ) -> dict[str, Any]:
+        """Calculate optimal series/parallel LED configuration.
 
-    for cat, keywords in categories:
-        if any(kw in text for kw in keywords):
-            return cat
+        Args:
+            v_supply: Available supply voltage
+            v_led: Forward voltage per LED
+            n_total: Total number of LEDs
+            i_per_string_ma: Current per series string
+        """
+        max_series = int(v_supply / v_led) if v_led > 0 else 1
+        max_series = max(1, max_series)
 
-    return "other"
+        # Find best configuration
+        best = None
+        for n_s in range(1, max_series + 1):
+            n_p = math.ceil(n_total / n_s)
+            used = n_s * n_p
+            waste = used - n_total
+            v_string = v_led * n_s
+            v_headroom = v_supply - v_string
+            total_current = n_p * i_per_string_ma
+            total_power = v_supply * total_current / 1000.0
 
+            if v_headroom < 0.5:
+                continue
 
-def calculate_thermal_budget(power_w: float, ambient_c: float = 25.0) -> dict[str, Any]:
-    """열적 버짓을 계산한다."""
-    # Typical LED driver efficiency assumptions
-    efficiency = 0.85
-    power_loss = power_w * (1 - efficiency) / efficiency
+            config = {
+                "series": n_s,
+                "parallel": n_p,
+                "total_leds_used": used,
+                "wasted_positions": waste,
+                "v_string": round(v_string, 2),
+                "v_headroom": round(v_headroom, 2),
+                "total_current_ma": round(total_current, 1),
+                "total_power_w": round(total_power, 2),
+            }
 
-    # PCB thermal resistance estimates (FR4)
-    rth_pcb_to_air = 40.0  # °C/W for small PCB
-    temp_rise = power_loss * rth_pcb_to_air
+            if best is None or (waste < best["wasted_positions"] and v_headroom >= 0.5):
+                best = config
 
-    return {
-        "input_power_w": round(power_w / efficiency, 2),
-        "power_loss_w": round(power_loss, 2),
-        "assumed_efficiency": efficiency,
-        "ambient_temp_c": ambient_c,
-        "estimated_pcb_temp_c": round(ambient_c + temp_rise, 1),
-        "rth_pcb_to_air": rth_pcb_to_air,
-        "warning": "실측 필요 — 이 값은 추정치입니다" if temp_rise > 30 else None,
-        "risk_level": "high" if temp_rise > 50 else "medium" if temp_rise > 30 else "low",
-    }
+        return best or {"error": "No valid configuration found"}

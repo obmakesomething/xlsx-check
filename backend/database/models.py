@@ -93,7 +93,7 @@ class ChatMessage(Base):
     role = Column(String(20), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
     agent_type = Column(String(50), default="orchestrator")
-    metadata = Column(JSON, default=dict)
+    meta_info = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     project = relationship("Project", back_populates="chat_messages")

@@ -22,7 +22,7 @@ async def list_projects(
     return projects
 
 
-@router.post("/", response_model=ProjectOut)
+@router.post("/", response_model=ProjectListOut)
 async def create_project(
     data: ProjectCreate,
     db: AsyncSession = Depends(get_db),
