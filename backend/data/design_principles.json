@@ -1,0 +1,167 @@
+{
+  "version": "1.0",
+  "description": "LED 조명 제품 설계 원칙 및 가이드라인",
+  "last_updated": "2026-03-26",
+  "principles": [
+    {
+      "id": "IC-001",
+      "category": "IC_SELECTION",
+      "title": "LED 드라이버 IC 선정 기준",
+      "content": "LED 드라이버 IC 선정 시 입력 전압 범위, 출력 전류 정밀도(±3% 이내), 효율(>90%), 열 특성(Tj max), 보호 기능(OVP, OCP, OTP) 내장 여부를 우선 확인한다.",
+      "priority": "HIGH",
+      "tags": ["IC선정", "LED드라이버", "효율"]
+    },
+    {
+      "id": "IC-002",
+      "category": "IC_SELECTION",
+      "title": "비절연 vs 절연형 토폴로지 선택",
+      "content": "AC 직결 LED 조명은 비절연 벅 또는 리니어 방식(SM2082, BP2866)이 원가 유리. 12V/24V DC 입력은 벅 컨버터(NCL30170, AL8860) 추천. 고전력(>50W)은 절연형(플라이백) 필수.",
+      "priority": "HIGH",
+      "tags": ["토폴로지", "비절연", "절연형"]
+    },
+    {
+      "id": "IC-003",
+      "category": "IC_SELECTION",
+      "title": "리니어 드라이버 적용 조건",
+      "content": "SM2082, BP2866 등 리니어 드라이버는 저가형 제품에 적합. 입출력 전압차가 작을수록 효율 유리. 발열 관리 필수(PCB 방열 패턴 최소 4cm² 확보).",
+      "priority": "MEDIUM",
+      "tags": ["리니어드라이버", "방열", "저가형"]
+    },
+    {
+      "id": "IC-004",
+      "category": "IC_SELECTION",
+      "title": "디밍 호환성 검토",
+      "content": "TRIAC 디밍 호환 필요 시 블리더 회로 및 디밍 전용 IC(BP2866AJ 등) 사용. PWM 디밍은 >1kHz 권장, 가청 노이즈 방지를 위해 20kHz 이상 추천.",
+      "priority": "MEDIUM",
+      "tags": ["디밍", "TRIAC", "PWM"]
+    },
+    {
+      "id": "PROT-001",
+      "category": "PROTECTION",
+      "title": "서지 보호 설계 기본",
+      "content": "KC 인증 기준 서지 내량 1kV(차동), 2kV(공통) 충족 필요. MOV(07D471K 또는 10D471K) + GDT 조합 권장. TVS 다이오드(P6KE series)는 2차측 보호용.",
+      "priority": "HIGH",
+      "tags": ["서지보호", "MOV", "GDT", "KC인증"]
+    },
+    {
+      "id": "PROT-002",
+      "category": "PROTECTION",
+      "title": "과전류 보호(OCP) 설계",
+      "content": "PTC 퓨즈(Bourns MF-R series) 또는 일반 퓨즈 적용. LED 드라이버 IC의 내장 OCP 기능과 이중 보호 구성. 정격 전류의 1.3~1.5배에서 동작하도록 설정.",
+      "priority": "HIGH",
+      "tags": ["과전류보호", "PTC", "퓨즈"]
+    },
+    {
+      "id": "PROT-003",
+      "category": "PROTECTION",
+      "title": "역극성 보호",
+      "content": "DC 입력 제품은 역극성 보호 필수. P-MOSFET 방식(저손실) 또는 직렬 다이오드(간단) 선택. 자동차 LED는 MOSFET 방식 권장(전압 강하 최소화).",
+      "priority": "MEDIUM",
+      "tags": ["역극성", "MOSFET", "다이오드"]
+    },
+    {
+      "id": "PROT-004",
+      "category": "PROTECTION",
+      "title": "정전기(ESD) 보호 설계",
+      "content": "외부 커넥터 및 센서 인터페이스에 TVS 어레이(TPD4E05U06 등) 적용. 터치 인터페이스는 ±8kV 접촉방전, ±15kV 기중방전 기준 설계.",
+      "priority": "MEDIUM",
+      "tags": ["ESD", "TVS", "정전기"]
+    },
+    {
+      "id": "RF-001",
+      "category": "RF_DESIGN",
+      "title": "2.4GHz RF 안테나 설계 기본",
+      "content": "PCB 안테나(역F 안테나) 사용 시 그라운드 플레인 클리어런스 최소 3mm 확보. 안테나 피드 라인 50Ω 임피던스 매칭. FR-4 기판 Dk=4.4 기준 마이크로스트립 폭 계산.",
+      "priority": "HIGH",
+      "tags": ["안테나", "2.4GHz", "임피던스매칭"]
+    },
+    {
+      "id": "RF-002",
+      "category": "RF_DESIGN",
+      "title": "RF 모듈 배치 가이드라인",
+      "content": "RF IC(nRF24L01, CC2500, ESP32)는 PCB 코너 배치 권장. 안테나 하부 및 주변 2mm 이내 비아/트레이스 금지. 전원 디커플링 캐패시터 IC 핀 최근접 배치.",
+      "priority": "HIGH",
+      "tags": ["RF배치", "PCB레이아웃", "디커플링"]
+    },
+    {
+      "id": "RF-003",
+      "category": "RF_DESIGN",
+      "title": "BLE/WiFi 공존 설계",
+      "content": "ESP32 사용 시 BLE + WiFi 동시 사용 가능. 안테나 공유 시 SW 레벨 시분할 제어 필요. 외장 안테나 커넥터(U.FL) 옵션 PCB 풋프린트 사전 확보.",
+      "priority": "MEDIUM",
+      "tags": ["BLE", "WiFi", "ESP32", "공존"]
+    },
+    {
+      "id": "RF-004",
+      "category": "RF_DESIGN",
+      "title": "RF 노이즈 격리",
+      "content": "LED 드라이버(스위칭) 노이즈가 RF 수신 감도에 영향. 스위칭 전원부와 RF부 사이 최소 10mm 이격 또는 그라운드 슬릿으로 격리. 페라이트 비드(BLM18AG601) 전원 라인 삽입.",
+      "priority": "HIGH",
+      "tags": ["RF격리", "노이즈", "페라이트비드"]
+    },
+    {
+      "id": "CERT-001",
+      "category": "CERTIFICATION",
+      "title": "KC 안전인증 사전 체크리스트",
+      "content": "절연거리(기본/보강) 확인, 온도 상승 시험 대비 발열 설계(Ta+ΔT < 부품 정격), 이상 상태 시험 대비 보호 회로 구성, 접지 연속성(금속 외함 시).",
+      "priority": "HIGH",
+      "tags": ["KC안전", "절연거리", "온도상승"]
+    },
+    {
+      "id": "CERT-002",
+      "category": "CERTIFICATION",
+      "title": "EMC 시험 사전 대응",
+      "content": "전도 방출(CE) 대응: 입력 필터(CLC π필터) 설계. 복사 방출(RE) 대응: PCB 루프 면적 최소화, 그라운드 플레인 연속성 확보. 클럭 라인 직렬 저항(33Ω) 삽입.",
+      "priority": "HIGH",
+      "tags": ["EMC", "전도방출", "복사방출", "필터"]
+    },
+    {
+      "id": "CERT-003",
+      "category": "CERTIFICATION",
+      "title": "에너지 소비효율 등급 대응",
+      "content": "LED 조명 에너지 소비효율 1등급 기준: 120lm/W 이상(2025 기준). 드라이버 효율 × LED 효능 조합 최적화. 대기전력 0.5W 이하 설계(스탠바이 회로 최적화).",
+      "priority": "HIGH",
+      "tags": ["에너지효율", "등급", "대기전력"]
+    },
+    {
+      "id": "PROD-001",
+      "category": "PRODUCTION",
+      "title": "SMT 공정 호환 부품 선정",
+      "content": "수삽 부품 최소화(원가 절감). LED는 0.65mm 피치 이상 권장. QFN 패키지는 열 패드 솔더 페이스트 개구율 70~80%. 0402 이하 칩은 고속 마운터 필요 여부 확인.",
+      "priority": "MEDIUM",
+      "tags": ["SMT", "부품선정", "공정"]
+    },
+    {
+      "id": "PROD-002",
+      "category": "PRODUCTION",
+      "title": "PCB 제조 사양 표준화",
+      "content": "2층 기판: 1.6mm, 1oz Cu, HASL. 4층 기판: 1.2mm, 1oz/0.5oz, ENIG. 최소 비아 0.3mm/0.6mm(홀/패드). 최소 패턴 폭/간격 0.15mm/0.15mm. 알루미늄 기판(LED용): 1.5mm, 1W/mK 이상.",
+      "priority": "MEDIUM",
+      "tags": ["PCB사양", "기판", "알루미늄"]
+    },
+    {
+      "id": "PROD-003",
+      "category": "PRODUCTION",
+      "title": "테스트 포인트 설계",
+      "content": "주요 전원(VCC, VLED, GND), 통신 라인(TX, RX, SDA, SCL), 센서 출력에 테스트 포인트 배치. ICT/FCT 지그 호환 1mm 패드, 2.54mm 피치 정렬 권장.",
+      "priority": "MEDIUM",
+      "tags": ["테스트포인트", "ICT", "FCT"]
+    },
+    {
+      "id": "PROD-004",
+      "category": "PRODUCTION",
+      "title": "BOM 원가 최적화 전략",
+      "content": "LCSC/SZLCSC 재고 확인 우선. 범용 부품(0603 저항/캐패시터) 통합 사양 사용. 단종 위험 부품 대체품 2개 이상 확보. 연간 사용량 기준 가격 협상(MOQ 고려).",
+      "priority": "HIGH",
+      "tags": ["BOM", "원가", "LCSC", "대체품"]
+    },
+    {
+      "id": "PROD-005",
+      "category": "PRODUCTION",
+      "title": "방열 설계 가이드",
+      "content": "LED 열저항 계산: Tj = Ta + (Rth_jc + Rth_cb + Rth_ba) × Pd. 알루미늄 PCB 열전도율 1~3W/mK. 방열판 필요 시 열 시뮬레이션 선행. 자연대류 기준 설계 후 강제대류 마진 확보.",
+      "priority": "HIGH",
+      "tags": ["방열", "열저항", "알루미늄PCB"]
+    }
+  ]
+}
