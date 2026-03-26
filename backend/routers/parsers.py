@@ -43,7 +43,7 @@ async def upload_and_parse(file: UploadFile = File(...)) -> dict[str, Any]:
     result: dict[str, Any] = {"filename": file.filename, "detected_format": fmt, "size_bytes": len(data)}
 
     try:
-        if fmt in ("kicad_schematic", "kicad_pcb"):
+        if fmt in ("kicad_sch", "kicad_schematic", "kicad_pcb"):
             text = data.decode("utf-8", errors="ignore")
             result["parsed"] = kicad_parser.parse(text, file.filename)
 

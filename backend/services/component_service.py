@@ -121,7 +121,7 @@ class ComponentService:
             return []
 
         query = f"{comp.description} {comp.package} {comp.category}"
-        results = self.retriever.search_components(query, n_results=10)
+        results = self.retriever.retrieve_components(query, n=10)
 
         substitutes = []
         for r in results:

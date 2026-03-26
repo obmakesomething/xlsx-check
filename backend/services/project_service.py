@@ -172,7 +172,12 @@ class ProjectService:
         await self.db.flush()
 
         # 벡터 스토어 재인덱싱
-        self.indexer.index_project(project.id, project.name, project.description, project.spec)
+        self.indexer.index_project({
+            "id": project.id,
+            "name": project.name,
+            "description": project.description or "",
+            "spec": project.spec or {},
+        })
 
         # 이력 기록
         history = DesignHistory(

@@ -73,7 +73,13 @@ class KnowledgeService:
         await self.db.flush()
 
         # Index in vector store
-        self.indexer.index_knowledge(entry.id, category, title, content, tags or [])
+        self.indexer.index_knowledge({
+            "id": entry.id,
+            "category": category,
+            "title": title,
+            "content": content,
+            "tags": tags or [],
+        })
 
         return entry
 
@@ -90,9 +96,13 @@ class KnowledgeService:
         await self.db.flush()
 
         # Re-index
-        self.indexer.index_knowledge(
-            entry.id, entry.category, entry.title, entry.content, entry.tags or []
-        )
+        self.indexer.index_knowledge({
+            "id": entry.id,
+            "category": entry.category,
+            "title": entry.title,
+            "content": entry.content,
+            "tags": entry.tags or [],
+        })
 
         return entry
 
@@ -106,7 +116,7 @@ class KnowledgeService:
 
     def search(self, query: str, category: Optional[str] = None, n_results: int = 10) -> list[dict[str, Any]]:
         """Search knowledge base using vector similarity."""
-        return self.retriever.search_knowledge(query, n_results=n_results, category=category)
+        return self.retriever.retrieve_knowledge(query, category=category, n=n_results)
 
     async def get_categories(self) -> list[str]:
         """Get all unique categories."""
@@ -278,7 +288,7 @@ def search_knowledge(
 ) -> list[dict[str, Any]]:
     """DB 세션 없이 RAG 검색만 수행하는 편의 함수."""
     retriever = Retriever()
-    return retriever.search_knowledge(query, n_results=top_k, category=category)
+    return retriever.retrieve_knowledge(query, category=category, n=top_k)
 
 
 async def add_knowledge_entry(db: AsyncSession, data: dict[str, Any]) -> KnowledgeEntry:
