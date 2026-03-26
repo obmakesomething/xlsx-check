@@ -100,6 +100,14 @@ class KnowledgeEntryCreate(BaseModel):
     tags: list[str] = []
 
 
+class KnowledgeEntryUpdate(BaseModel):
+    category: Optional[str] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    source: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
 class KnowledgeEntryOut(BaseModel):
     id: int
     category: str
