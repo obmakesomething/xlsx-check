@@ -1,0 +1,400 @@
+{
+  "version": "1.0",
+  "description": "KiCad 10.0 마이그레이션 계획 및 가이드",
+  "last_updated": "2026-03-26",
+  "migration_goals": {
+    "primary": "Altium Designer에서 KiCad 10.0으로 전면 전환",
+    "target_date": "2026-09-30",
+    "objectives": [
+      "라이선스 비용 절감 (연간 약 2,000만원 절약 예상)",
+      "오픈소스 기반 협업 환경 구축 (Git 연동)",
+      "자동화 파이프라인 구축 (CI/CD 기반 DRC/ERC/BOM 생성)",
+      "사내 부품 라이브러리 통합 관리 체계 확립",
+      "신규 인원 온보딩 시간 단축 (교육 자료 표준화)"
+    ],
+    "success_metrics": {
+      "pilot_completion": "파일럿 보드 3종 이상 KiCad로 설계 완료",
+      "library_coverage": "주요 사용 부품 90% 이상 KiCad 라이브러리 등록",
+      "team_proficiency": "전 설계 인원 KiCad 독립 설계 가능",
+      "automation": "BOM 생성 및 거버 출력 자동화 파이프라인 운영"
+    }
+  },
+  "pilot_board_criteria": {
+    "description": "파일럿 보드 선정 기준 및 후보",
+    "selection_criteria": [
+      "2층 PCB (복잡도 낮음)",
+      "부품 수 50개 이하",
+      "현재 양산 중이어서 비교 검증 가능",
+      "RF 회로 미포함 (첫 파일럿에서 제외)",
+      "납기 여유 있는 프로젝트"
+    ],
+    "pilot_candidates": [
+      {
+        "name": "12W 다운라이트 LED 드라이버",
+        "complexity": "Low",
+        "layers": 2,
+        "components": 35,
+        "ic": "BP2866AJ",
+        "notes": "가장 단순한 AC 직결 리니어 드라이버. 첫 번째 파일럿 최적"
+      },
+      {
+        "name": "PIR 센서 모듈",
+        "complexity": "Low",
+        "layers": 2,
+        "components": 22,
+        "ic": "BISS0001 + RE200B",
+        "notes": "아날로그 회로 위주. 라이브러리 구축 연습에 적합"
+      },
+      {
+        "name": "24V DC LED 스트립 드라이버",
+        "complexity": "Medium",
+        "layers": 2,
+        "components": 45,
+        "ic": "PT4115 + STM32G030",
+        "notes": "MCU 포함. 스키매틱 계층 구조 연습에 적합"
+      }
+    ]
+  },
+  "folder_structure": {
+    "description": "KiCad 프로젝트 Git 저장소 폴더 구조 표준",
+    "structure": {
+      "project_root/": {
+        "README.md": "프로젝트 개요, 주요 사양, 변경 이력",
+        "*.kicad_pro": "KiCad 프로젝트 파일",
+        "*.kicad_sch": "스키매틱 파일 (루트)",
+        "*.kicad_pcb": "PCB 레이아웃 파일",
+        "schematic/": {
+          "description": "계층 스키매틱 하위 시트",
+          "*.kicad_sch": "서브 시트 (전원부, LED부, 센서부 등)"
+        },
+        "library/": {
+          "description": "프로젝트 전용 로컬 라이브러리",
+          "symbols/": "프로젝트 전용 심볼 (.kicad_sym)",
+          "footprints.pretty/": "프로젝트 전용 풋프린트 (.kicad_mod)",
+          "3dmodels/": "3D 모델 (.step, .wrl)"
+        },
+        "fabrication/": {
+          "description": "제조 출력물",
+          "gerber/": "거버 파일",
+          "drill/": "드릴 파일",
+          "bom/": "BOM 파일 (CSV/XLSX)",
+          "assembly/": "SMT 실장 파일 (PnP, CPL)"
+        },
+        "documentation/": {
+          "description": "설계 문서",
+          "schematic_pdf/": "스키매틱 PDF 출력",
+          "pcb_pdf/": "PCB 도면 PDF",
+          "review/": "설계 리뷰 체크리스트"
+        },
+        "simulation/": {
+          "description": "SPICE 시뮬레이션 파일 (선택)",
+          "*.asc": "LTSpice 시뮬레이션"
+        }
+      }
+    },
+    "gitignore_rules": [
+      "# KiCad backup/autosave",
+      "*-backups/",
+      "*.kicad_sch-bak",
+      "*.kicad_pcb-bak",
+      "_autosave-*",
+      "fp-info-cache",
+      "# Build outputs (CI에서 생성)",
+      "fabrication/gerber/*",
+      "fabrication/drill/*",
+      "fabrication/bom/*",
+      "# OS specific",
+      ".DS_Store",
+      "Thumbs.db"
+    ]
+  },
+  "library_policy": {
+    "description": "부품 라이브러리 관리 정책",
+    "library_hierarchy": [
+      {
+        "level": 1,
+        "name": "KiCad 공식 라이브러리",
+        "usage": "범용 부품(저항, 캐패시터, 표준 IC 패키지) 참조",
+        "management": "KiCad 업데이트 시 자동 갱신"
+      },
+      {
+        "level": 2,
+        "name": "사내 공용 라이브러리 (회사 Git 저장소)",
+        "usage": "component_preferences.json에 등록된 선호 부품",
+        "management": "라이브러리 담당자 PR 승인 후 병합. 월 1회 정기 리뷰"
+      },
+      {
+        "level": 3,
+        "name": "프로젝트 로컬 라이브러리",
+        "usage": "해당 프로젝트에서만 사용하는 특수 부품",
+        "management": "프로젝트 완료 후 공용 라이브러리로 승격 검토"
+      }
+    ],
+    "naming_convention": {
+      "symbols": "[제조사]_[파트넘버] (예: ON_NCL30170DR2G)",
+      "footprints": "[패키지]_[핀수]_[피치] (예: SOP-8_3.9x4.9mm_P1.27mm)",
+      "3d_models": "[파트넘버].step (예: NCL30170DR2G.step)"
+    },
+    "quality_checklist": [
+      "심볼: 핀 번호/이름 데이터시트와 일치 확인",
+      "심볼: 전원핀 Power Input/Output 속성 정확히 설정 (ERC 대응)",
+      "풋프린트: 패드 사이즈 데이터시트 랜드패턴과 일치",
+      "풋프린트: 실크스크린 핀1 마킹 포함",
+      "풋프린트: 코트야드(Courtyard) 설정 (부품 간격 DRC용)",
+      "3D 모델: STEP 파일 원점/방향 풋프린트와 정렬",
+      "속성: LCSC 코드, 제조사, 파트넘버 필드 입력"
+    ],
+    "lcsc_integration": {
+      "description": "LCSC/JLCPCB 부품 코드 연동",
+      "field_name": "LCSC",
+      "usage": "BOM 생성 시 LCSC 코드 자동 포함. JLCPCB SMT 어셈블리 직접 호환",
+      "tool": "KiCad JLCPCB Tools 플러그인 활용"
+    }
+  },
+  "roadmap_12weeks": [
+    {
+      "week": "1~2주",
+      "phase": "환경 구축 및 교육",
+      "tasks": [
+        "KiCad 10.0 설치 및 환경 설정 (전 설계 인원)",
+        "사내 Git 저장소 구축 (라이브러리 + 프로젝트 템플릿)",
+        "KiCad 기본 교육 실시 (8시간 × 2일)",
+        "Altium → KiCad 단축키 매핑 가이드 배포",
+        "폴더 구조 표준 및 .gitignore 템플릿 배포"
+      ],
+      "deliverables": ["교육 완료 보고서", "Git 저장소 URL", "환경 설정 가이드"],
+      "risk": "KiCad UI 적응 시간 필요. Altium 습관 탈피에 1~2주 소요 예상"
+    },
+    {
+      "week": "3~4주",
+      "phase": "라이브러리 구축 (Phase 1)",
+      "tasks": [
+        "component_preferences.json 기반 선호 부품 심볼/풋프린트 생성 (상위 20개)",
+        "LCSC 코드 매핑 및 속성 입력",
+        "기존 Altium 라이브러리에서 주요 부품 변환 (Altium2KiCad 도구 활용)",
+        "풋프린트 검증: 데이터시트 대비 패드 치수 확인",
+        "라이브러리 PR 리뷰 프로세스 수립"
+      ],
+      "deliverables": ["사내 공용 라이브러리 v0.1", "라이브러리 기여 가이드"],
+      "risk": "Altium 라이브러리 자동 변환 정확도 80% 수준. 수동 검증 필수"
+    },
+    {
+      "week": "5~6주",
+      "phase": "파일럿 보드 #1 설계",
+      "tasks": [
+        "12W 다운라이트 LED 드라이버 스키매틱 입력",
+        "ERC 실행 및 오류 수정",
+        "PCB 레이아웃 (부품 배치 → 배선 → DRC)",
+        "기존 Altium 설계 결과물과 비교 검증",
+        "거버 출력 및 PCB 제조사 검증 (ODB++ 또는 거버)"
+      ],
+      "deliverables": ["파일럿 보드 #1 거버 파일", "Altium 대비 비교 리포트"],
+      "risk": "첫 보드라 예상보다 시간 소요 가능. 2주 버퍼 확보"
+    },
+    {
+      "week": "7~8주",
+      "phase": "파일럿 보드 #2 + 자동화",
+      "tasks": [
+        "PIR 센서 모듈 설계 (파일럿 #2)",
+        "BOM 자동 생성 스크립트 구축 (KiCad Python API 활용)",
+        "거버 자동 출력 스크립트 구축",
+        "CI/CD 파이프라인 구축 (Push 시 DRC/ERC 자동 실행)",
+        "JLCPCB Tools 플러그인 연동 테스트"
+      ],
+      "deliverables": ["파일럿 보드 #2 완료", "BOM/거버 자동화 스크립트", "CI 파이프라인"],
+      "risk": "KiCad Python API 버전 호환성 이슈 가능"
+    },
+    {
+      "week": "9~10주",
+      "phase": "파일럿 보드 #3 + 라이브러리 확장",
+      "tasks": [
+        "24V DC LED 스트립 드라이버 설계 (파일럿 #3, MCU 포함)",
+        "계층 스키매틱 구조 적용 연습",
+        "라이브러리 확장: 선호 부품 전체 등록 완료",
+        "파일럿 보드 #1 PCB 제조 및 실물 검증",
+        "설계 리뷰 체크리스트 KiCad 버전 작성"
+      ],
+      "deliverables": ["파일럿 보드 #3 완료", "사내 공용 라이브러리 v1.0", "설계 리뷰 체크리스트"],
+      "risk": "MCU 포함 보드는 핀 수 많아 스키매틱 복잡도 증가"
+    },
+    {
+      "week": "11~12주",
+      "phase": "전환 판정 및 안정화",
+      "tasks": [
+        "파일럿 보드 3종 결과 종합 평가",
+        "Altium 대비 생산성 비교 분석 (설계 시간, 오류율)",
+        "잔여 이슈 목록 정리 및 대응 방안 수립",
+        "전환 판정 회의 (Go/No-Go)",
+        "신규 프로젝트부터 KiCad 적용 시작 (전환 승인 시)",
+        "Altium 라이선스 갱신 중단 계획 수립"
+      ],
+      "deliverables": ["전환 판정 보고서", "잔여 이슈 목록", "향후 운영 계획"],
+      "risk": "팀원 일부의 전환 저항 가능. 충분한 교육과 지원 필요"
+    }
+  ],
+  "templates": {
+    "description": "프로젝트 템플릿 및 설계 표준",
+    "schematic_templates": [
+      {
+        "name": "AC_LED_Driver_Template",
+        "description": "AC 입력 LED 드라이버 스키매틱 템플릿",
+        "blocks": ["AC 입력 필터 (퓨즈+MOV+NTC+CLC)", "정류부 (브릿지+전해캡)", "LED 드라이버 IC부", "LED 출력부", "서지 보호부"]
+      },
+      {
+        "name": "DC_LED_Driver_Template",
+        "description": "DC 입력 LED 드라이버 스키매틱 템플릿",
+        "blocks": ["DC 입력 보호 (역극성+PTC)", "벅 드라이버 IC부", "LED 출력부", "PWM 디밍 인터페이스"]
+      },
+      {
+        "name": "Sensor_Module_Template",
+        "description": "센서 모듈 스키매틱 템플릿",
+        "blocks": ["전원부 (LDO 3.3V)", "센서 IC부", "MCU부", "출력 인터페이스 (릴레이/MOSFET)"]
+      },
+      {
+        "name": "RF_Module_Template",
+        "description": "2.4GHz RF 모듈 스키매틱 템플릿",
+        "blocks": ["전원부 (LDO 3.3V + 페라이트비드)", "RF IC부", "매칭 네트워크", "안테나부", "SPI/UART 인터페이스"]
+      }
+    ],
+    "pcb_design_rules": {
+      "2layer_standard": {
+        "trace_width_min": "0.2mm",
+        "trace_width_power": "0.5mm 이상 (전류에 따라 계산)",
+        "clearance_min": "0.2mm",
+        "clearance_high_voltage": "2.0mm (AC 입력부)",
+        "via_drill": "0.3mm",
+        "via_pad": "0.6mm",
+        "board_thickness": "1.6mm",
+        "copper_weight": "1oz (35μm)"
+      },
+      "4layer_standard": {
+        "stackup": "Signal-GND-Power-Signal",
+        "trace_width_min": "0.15mm",
+        "clearance_min": "0.15mm",
+        "via_drill": "0.25mm",
+        "via_pad": "0.5mm",
+        "board_thickness": "1.2mm",
+        "copper_weight": "1oz/0.5oz/0.5oz/1oz"
+      }
+    },
+    "title_block": {
+      "company": "LED AI Copilot 설계팀",
+      "revision_format": "Rev X.Y (X: 주요변경, Y: 소변경)",
+      "approval_fields": ["설계", "검도", "승인"]
+    }
+  },
+  "automation": {
+    "description": "KiCad 자동화 도구 및 CI/CD 파이프라인",
+    "tools": [
+      {
+        "name": "KiBot",
+        "purpose": "거버, BOM, 스키매틱 PDF 자동 생성",
+        "config_file": ".kibot.yaml",
+        "usage": "CI/CD 파이프라인에서 Push 시 자동 실행",
+        "outputs": ["거버 파일 (JLCPCB 호환)", "BOM (CSV/XLSX)", "스키매틱 PDF", "PCB 3D 렌더링 이미지"]
+      },
+      {
+        "name": "KiCad CLI (kicad-cli)",
+        "purpose": "DRC/ERC 자동 실행, 거버/드릴 출력",
+        "usage": "CI에서 설계 규칙 자동 검증",
+        "commands": [
+          "kicad-cli sch erc --severity-error input.kicad_sch",
+          "kicad-cli pcb drc --severity-error input.kicad_pcb",
+          "kicad-cli pcb export gerbers input.kicad_pcb -o gerber/",
+          "kicad-cli pcb export drill input.kicad_pcb -o drill/"
+        ]
+      },
+      {
+        "name": "KiCad Python Scripting",
+        "purpose": "커스텀 BOM 생성, 부품 속성 일괄 편집",
+        "usage": "사내 BOM 양식에 맞춘 커스텀 스크립트",
+        "features": ["LCSC 코드 기반 BOM 생성", "부품 가격 자동 조회", "대체품 정보 추가"]
+      },
+      {
+        "name": "JLCPCB Tools 플러그인",
+        "purpose": "JLCPCB/LCSC 연동 BOM/CPL 생성",
+        "usage": "KiCad 내장 플러그인 매니저에서 설치",
+        "features": ["LCSC 부품 검색 및 속성 입력", "JLCPCB 호환 BOM/CPL 자동 생성", "SMT 어셈블리 직접 발주"]
+      }
+    ],
+    "ci_cd_pipeline": {
+      "platform": "GitLab CI / GitHub Actions",
+      "triggers": ["Push to main", "Pull Request 생성"],
+      "stages": [
+        {
+          "name": "Lint",
+          "actions": ["스키매틱 ERC 실행", "PCB DRC 실행"],
+          "fail_condition": "Error 발생 시 파이프라인 실패"
+        },
+        {
+          "name": "Build",
+          "actions": ["거버 파일 생성", "드릴 파일 생성", "BOM 생성 (CSV + XLSX)", "스키매틱 PDF 생성"],
+          "artifacts": "fabrication/ 폴더에 저장"
+        },
+        {
+          "name": "Review",
+          "actions": ["PCB 3D 렌더링 이미지 생성", "BOM 변경 사항 diff 출력", "PR 코멘트에 자동 첨부"],
+          "artifacts": "documentation/ 폴더에 저장"
+        }
+      ]
+    }
+  },
+  "transition_criteria": {
+    "description": "Altium → KiCad 전면 전환 Go/No-Go 판정 기준",
+    "go_criteria": [
+      {
+        "id": "TC-01",
+        "criterion": "파일럿 보드 3종 이상 KiCad 설계 완료",
+        "weight": "필수",
+        "measurement": "파일럿 보드 거버 출력 및 PCB 제조 완료 여부"
+      },
+      {
+        "id": "TC-02",
+        "criterion": "PCB 제조 결과물 품질 이상 없음",
+        "weight": "필수",
+        "measurement": "제조된 PCB 실물 검사 통과 (패턴, 비아, 실크 등)"
+      },
+      {
+        "id": "TC-03",
+        "criterion": "주요 부품 라이브러리 90% 이상 구축",
+        "weight": "필수",
+        "measurement": "component_preferences.json 등록 부품 대비 라이브러리 커버리지"
+      },
+      {
+        "id": "TC-04",
+        "criterion": "전 설계 인원 독립 설계 가능",
+        "weight": "필수",
+        "measurement": "각 인원 최소 1개 보드 독립 설계 완료"
+      },
+      {
+        "id": "TC-05",
+        "criterion": "BOM/거버 자동화 파이프라인 운영 중",
+        "weight": "권장",
+        "measurement": "CI/CD 파이프라인 정상 동작 확인"
+      },
+      {
+        "id": "TC-06",
+        "criterion": "설계 생산성 Altium 대비 80% 이상",
+        "weight": "권장",
+        "measurement": "동일 복잡도 보드 설계 소요 시간 비교"
+      },
+      {
+        "id": "TC-07",
+        "criterion": "치명적 미해결 이슈 없음",
+        "weight": "필수",
+        "measurement": "이슈 트래커에 Severity High 이상 미해결 건 0건"
+      }
+    ],
+    "no_go_actions": [
+      "미충족 기준 분석 및 보완 계획 수립",
+      "추가 4주 연장 후 재판정",
+      "최대 2회 연장 후에도 미충족 시 부분 전환 (신규 프로젝트만 KiCad) 검토"
+    ],
+    "post_transition": [
+      "Altium 라이선스 6개월 유지 후 종료 (기존 프로젝트 유지보수용)",
+      "분기별 라이브러리 정기 리뷰 실시",
+      "KiCad 메이저 업데이트 시 호환성 검증 절차 수립",
+      "신규 입사자 KiCad 온보딩 교육 프로그램 운영"
+    ]
+  }
+}

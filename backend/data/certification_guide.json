@@ -1,0 +1,297 @@
+[
+  {
+    "certification": "KC 안전인증",
+    "type": "safety",
+    "applicable_products": ["AC 입력 LED 조명", "전원장치", "AC 어댑터"],
+    "requirements": [
+      "절연 시험 AC 1500V/1min (기본절연) 또는 AC 3000V/1min (강화절연)",
+      "누설전류 0.5mA 이하 (Class II) 또는 0.75mA 이하 (Class I)",
+      "온도상승 시험 (각 부품별 허용 온도 이내)",
+      "이상 상태 시험 (부품 단락/개방 시 화재/감전 위험 없음)",
+      "내구성 시험 (스위치 1만회 등)"
+    ],
+    "estimated_cost_krw": "200~400만원",
+    "estimated_duration_weeks": 4,
+    "common_failure_points": [
+      "1차-2차 절연거리 부족 (6mm 미달)",
+      "온도 마진 부족 (특히 전해 캐패시터, 트랜스포머)",
+      "이상 상태에서 보호 회로 미동작",
+      "접지 연속성 불량 (금속 외함 제품)"
+    ],
+    "tips": "설계 초기에 절연거리 6mm 이상 확보 필수. PCB 슬릿 활용. 온도 마진 20°C 이상 확보 권장."
+  },
+  {
+    "certification": "KC EMC (전자파적합성)",
+    "type": "emc",
+    "applicable_products": ["모든 전자제품", "LED 조명", "무선기기"],
+    "requirements": [
+      "전도 방출(CE): 150kHz~30MHz 기준치 이내",
+      "복사 방출(RE): 30MHz~1GHz 기준치 이내",
+      "정전기 방전(ESD): ±4kV 접촉, ±8kV 기중",
+      "전기적 빠른 과도현상(EFT): ±1kV",
+      "서지(Surge): ±1kV (차동), ±2kV (공통)"
+    ],
+    "estimated_cost_krw": "150~300만원",
+    "estimated_duration_weeks": 3,
+    "common_failure_points": [
+      "전도 방출 150~500kHz 대역 초과 (입력 필터 부족)",
+      "복사 방출 30~100MHz 대역 초과 (PCB 루프 면적 과다)",
+      "서지 시험에서 MOV 소손 또는 IC 파손",
+      "ESD 시험에서 터치 인터페이스 오동작"
+    ],
+    "tips": "PCB 설계 시 전원 루프 면적 최소화. 입력 필터는 CLC π 구조 권장. 서지 보호는 MOV+GDT 2단 구성."
+  },
+  {
+    "certification": "KC 전파인증 (무선기기)",
+    "type": "radio",
+    "applicable_products": ["WiFi 탑재 조명", "BLE 탑재 조명", "Zigbee 조명", "2.4GHz RF 리모컨"],
+    "requirements": [
+      "점유 대역폭 측정",
+      "불요 발사(스퓨리어스) 측정",
+      "안테나 이득 확인",
+      "전력 스펙트럼 밀도",
+      "주파수 안정도 (온도 변화 시)"
+    ],
+    "estimated_cost_krw": "300~600만원",
+    "estimated_duration_weeks": 4,
+    "common_failure_points": [
+      "스퓨리어스 발사 기준 초과 (고조파)",
+      "안테나 임피던스 매칭 불량으로 출력 저하",
+      "온도 변화 시 주파수 드리프트",
+      "LED 드라이버 스위칭 노이즈가 RF 대역에 간섭"
+    ],
+    "tips": "인증 완료된 모듈(ESP32-C3-MINI 등) 사용 시 모듈 인증으로 대체 가능. PCB 안테나 사용 시 사전 벡터 네트워크 분석기(VNA) 측정 필수."
+  },
+  {
+    "certification": "에너지 소비효율 등급",
+    "type": "energy",
+    "applicable_products": ["LED 전구", "LED 형광등 대체형", "LED 다운라이트"],
+    "requirements": [
+      "광효율 측정 (lm/W): 1등급 120lm/W 이상",
+      "연색성(CRI): Ra 80 이상",
+      "색온도 편차: 공칭값 ±10% 이내",
+      "역률(PF): 25W 이상 제품 0.9 이상",
+      "대기전력: 0.5W 이하"
+    ],
+    "estimated_cost_krw": "100~200만원",
+    "estimated_duration_weeks": 2,
+    "common_failure_points": [
+      "광효율 미달 (드라이버 효율 × LED 효능 조합 부족)",
+      "역률 기준 미달 (리니어 드라이버의 PF 개선 필요)",
+      "대기전력 초과 (스탠바이 회로 전류 과다)",
+      "색온도 편차 초과 (LED 빈닝 관리 부족)"
+    ],
+    "tips": "LED 효능 180lm/W 이상 선택 시 드라이버 효율 70%에서도 1등급 가능. 리니어 드라이버는 역률 개선 캐패시터 추가."
+  },
+  {
+    "certification": "FCC Part 15",
+    "type": "emc",
+    "applicable_products": ["미국 수출 LED 조명", "미국 수출 무선기기"],
+    "requirements": [
+      "Class B 비의도적 방사기기: 복사 방출 30MHz~40GHz",
+      "전도 방출 150kHz~30MHz",
+      "의도적 방사기기(Part 15.247): 출력, 대역폭, 주파수 호핑 등"
+    ],
+    "estimated_cost_krw": "300~500만원",
+    "estimated_duration_weeks": 4,
+    "common_failure_points": [
+      "복사 방출 기준 초과 (KC 대비 약 6dB 엄격)",
+      "전원 라인 전도 방출 초과",
+      "라벨링 요구사항 미충족"
+    ],
+    "tips": "KC EMC 통과 후 FCC 시험 시 복사 방출 마진 6dB 이상 확보 필요. PCBA 차폐 캔 추가 고려."
+  },
+  {
+    "certification": "CE Marking (LVD + EMC)",
+    "type": "safety_emc",
+    "applicable_products": ["유럽 수출 LED 조명", "유럽 수출 전원장치"],
+    "requirements": [
+      "LVD (EN 62368-1 또는 EN 61347): 안전 요구사항",
+      "EMC (EN 55015): 조명기기 전도/복사 방출",
+      "EMC (EN 61547): 조명기기 내성 시험",
+      "RoHS (EN 50581): 유해물질 제한",
+      "적합성 선언서(DoC) 작성"
+    ],
+    "estimated_cost_krw": "400~800만원",
+    "estimated_duration_weeks": 6,
+    "common_failure_points": [
+      "EN 55015 전도 방출 QP(Quasi-Peak) 기준 초과",
+      "EN 61000-3-2 고조파 전류 기준 초과",
+      "LVD 절연 요구사항 미충족",
+      "RoHS 자료 미비 (공급망 소재 선언서)"
+    ],
+    "tips": "EN 55015는 KC EMC보다 엄격한 조명 전용 규격. 고조파 전류(IEC 61000-3-2)는 능동 PFC 또는 밸리필 방식으로 대응."
+  },
+  {
+    "certification": "UL 8750 (LED 조명)",
+    "type": "safety",
+    "applicable_products": ["미국/캐나다 수출 LED 조명"],
+    "requirements": [
+      "전기적 안전성 (절연, 누설전류, 내전압)",
+      "열적 안전성 (온도상승, 이상 상태)",
+      "기계적 안전성 (내구성, 방수 등급)",
+      "공장 검사(Follow-Up Service) 필수"
+    ],
+    "estimated_cost_krw": "500~1500만원",
+    "estimated_duration_weeks": 8,
+    "common_failure_points": [
+      "공장 검사 대비 품질관리 시스템 미비",
+      "온도 측정 포인트별 기준 초과",
+      "부품 UL 인증 여부 미확인 (특히 트랜스포머, PCB)",
+      "라벨 내구성 시험 실패"
+    ],
+    "tips": "UL 인증은 시간과 비용이 많이 소요됨. 사전에 Pre-Engineering 서비스를 활용하여 리스크 파악. 핵심 부품(PCB, 트랜스포머, 커넥터)은 UL 인증품 사용."
+  },
+  {
+    "certification": "IP 등급 시험 (방수/방진)",
+    "type": "environmental",
+    "applicable_products": ["옥외 LED 조명", "욕실 조명", "산업용 조명"],
+    "requirements": [
+      "IP65: 분진 완전 보호 + 분류 방수 (저수압 물줄기)",
+      "IP67: 분진 완전 보호 + 일시적 침수 (1m, 30분)",
+      "IP44: 1mm 이상 고형물 + 비산 방수 (실내 습기 환경)"
+    ],
+    "estimated_cost_krw": "50~150만원",
+    "estimated_duration_weeks": 1,
+    "common_failure_points": [
+      "케이스 실링 불량 (실리콘 가스켓 압축률 부족)",
+      "케이블 인입부 방수 그랜드 미적용",
+      "렌즈-하우징 접합부 누수",
+      "열 팽창/수축에 의한 흡습 현상"
+    ],
+    "tips": "IP65 이상은 고어텍스 벤트(방수 통기 밸브) 적용 권장. 온도 사이클에 의한 내부 결로 방지 효과."
+  },
+  {
+    "certification": "IK 등급 시험 (내충격)",
+    "type": "environmental",
+    "applicable_products": ["산업용 조명", "주차장 조명", "체육관 조명"],
+    "requirements": [
+      "IK08: 5 줄(Joule) 충격 에너지 견딤",
+      "IK10: 20 줄(Joule) 충격 에너지 견딤",
+      "충격 후 기능 정상, 안전 위험 없음"
+    ],
+    "estimated_cost_krw": "30~80만원",
+    "estimated_duration_weeks": 1,
+    "common_failure_points": [
+      "폴리카보네이트 렌즈 파손",
+      "내부 PCB 고정 불량으로 부품 탈락",
+      "케이스 마운팅 포인트 파단"
+    ],
+    "tips": "IK10 요구 시 강화유리 또는 두께 3mm 이상 PC 렌즈 사용. PCB는 나사 고정 최소 4점."
+  },
+  {
+    "certification": "KS C 7651 (LED 조명 성능)",
+    "type": "performance",
+    "applicable_products": ["공공기관 납품 LED 조명", "조달청 등록 제품"],
+    "requirements": [
+      "광효율: 120lm/W 이상 (2025 기준)",
+      "연색성(CRI): Ra 80 이상, R9 > 0",
+      "색온도 편차: MacAdam 5-step 이내",
+      "수명: LM-80 기반 TM-21 추정 50,000시간 이상 (L70)",
+      "눈부심(UGR): 용도별 기준 충족"
+    ],
+    "estimated_cost_krw": "200~350만원",
+    "estimated_duration_weeks": 3,
+    "common_failure_points": [
+      "광효율 기준 미달",
+      "색온도 편차 초과 (LED 빈닝 그룹 혼용)",
+      "수명 추정 자료(LM-80) 미확보",
+      "배광 균제도 미달"
+    ],
+    "tips": "조달청 납품 시 KS 인증 필수. LM-80 리포트는 LED 제조사에서 발급받아야 하며, 최소 6,000시간 데이터 필요."
+  },
+  {
+    "certification": "RoHS / REACH",
+    "type": "material",
+    "applicable_products": ["유럽 수출 전체 전자제품", "국내 전기전자제품"],
+    "requirements": [
+      "RoHS: 납(Pb), 수은(Hg), 카드뮴(Cd), 6가 크롬(Cr6+), PBB, PBDE 제한",
+      "REACH: SVHC(고위험성 물질) 0.1% 이상 포함 시 신고",
+      "부품별 소재 선언서(Material Declaration) 확보"
+    ],
+    "estimated_cost_krw": "50~100만원 (XRF 분석 시)",
+    "estimated_duration_weeks": 1,
+    "common_failure_points": [
+      "납(Pb) 함유 솔더 사용 (무연 솔더 필수)",
+      "코팅/도금 내 6가 크롬 검출",
+      "공급망 소재 선언서 미확보",
+      "LED 패키지 내 형광체 물질 미확인"
+    ],
+    "tips": "부품 구매 시 RoHS 인증서 자동 수집 체계 구축. LCSC에서 RoHS 컴플라이언트 필터 활용."
+  },
+  {
+    "certification": "전기용품 안전확인 (생활가전)",
+    "type": "safety",
+    "applicable_products": ["LED 데스크 램프", "LED 스탠드 조명", "USB 충전 조명"],
+    "requirements": [
+      "안전기준 적합 확인 (제조사 자체 시험 가능)",
+      "안전확인 시험기관 성적서",
+      "제품 안전정보 표시"
+    ],
+    "estimated_cost_krw": "100~200만원",
+    "estimated_duration_weeks": 2,
+    "common_failure_points": [
+      "표시사항 누락 (정격, 주의사항, 제조사 정보)",
+      "코드 인입부 굽힘 시험 실패",
+      "터치 가능 부분 온도 초과"
+    ],
+    "tips": "안전확인 대상은 안전인증 대비 절차 간소. 자체 시험으로 적합성 확인 후 신고 가능."
+  },
+  {
+    "certification": "ENEC (유럽 안전마크)",
+    "type": "safety",
+    "applicable_products": ["유럽 프리미엄 시장 LED 조명", "조명 부품(드라이버, 컨버터)"],
+    "requirements": [
+      "IEC 61347-2-13 (LED 드라이버 안전)",
+      "공장 검사(Factory Inspection) 연 1~2회",
+      "유럽 ENEC 회원 시험기관에서 시험"
+    ],
+    "estimated_cost_krw": "600~1200만원",
+    "estimated_duration_weeks": 8,
+    "common_failure_points": [
+      "공장 검사 품질관리 시스템 미비",
+      "부품 추적성(Traceability) 미확보",
+      "이상 상태 시험에서 안전 마진 부족"
+    ],
+    "tips": "ENEC는 CE의 자율 인증보다 신뢰도 높음. 유럽 유통/건설 프로젝트에서 ENEC 요구하는 경우 증가 추세."
+  },
+  {
+    "certification": "DALI / DALI-2 인증",
+    "type": "protocol",
+    "applicable_products": ["상업용 LED 조명", "DALI 디밍 드라이버", "DALI 센서"],
+    "requirements": [
+      "DALI-2 프로토콜 적합성 시험 (DiiA 인증)",
+      "명령 응답 시간 요구사항",
+      "디밍 커브 (로그 스케일) 적합성",
+      "메모리 뱅크 구현 확인"
+    ],
+    "estimated_cost_krw": "400~700만원",
+    "estimated_duration_weeks": 6,
+    "common_failure_points": [
+      "디밍 하한값(0.1%) 출력 불안정",
+      "DALI 버스 전류 소비 초과",
+      "메모리 뱅크 읽기/쓰기 오류",
+      "그룹/씬 설정 후 전원 재투입 시 설정 소실"
+    ],
+    "tips": "DALI-2는 기존 DALI 대비 엄격. 사전에 DiiA 테스트 시퀀스 소프트웨어로 셀프 테스트 필수. 디밍 하한값 안정성이 핵심."
+  },
+  {
+    "certification": "Zhaga Book 인증",
+    "type": "mechanical",
+    "applicable_products": ["교체형 LED 모듈", "LED 드라이버", "센서 모듈"],
+    "requirements": [
+      "기계적 인터페이스(커넥터, 마운팅) 규격 적합",
+      "전기적 인터페이스 규격 적합",
+      "열적 인터페이스 규격 적합",
+      "Book 번호별 세부 규격 상이"
+    ],
+    "estimated_cost_krw": "200~400만원",
+    "estimated_duration_weeks": 4,
+    "common_failure_points": [
+      "커넥터 치수 공차 초과",
+      "마운팅 홀 위치 오차",
+      "열 접촉 면적 부족"
+    ],
+    "tips": "Zhaga Book 18 (D4i) 센서 인터페이스가 스마트 조명 트렌드. Zhaga 커넥터 사전 확보 후 PCB 설계에 반영."
+  }
+]
